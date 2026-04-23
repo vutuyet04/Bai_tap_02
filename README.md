@@ -220,6 +220,7 @@ INSERT INTO [PhieuMuon] ([MaPhieu],[MaSinhVien],[MaSach],[SoLuongMuon],[NgayMuon
 VALUES (N'180',N'1956210999',N'TKW',3,'2018-12-27','2019-01-01',55000)
 ```
 Phần 2 :Xây dựng FUNCTION .
+2.1.Hãy cho biết trong SQL Server có những loại function build_in (hàm có sẵn) nào, nêu 1 vài system function build_in mà em tìm hiểu được (ko cần nhiều, cần đặc sắc theo góc nhìn của em), cho SQL khai thác các hàm đó.
 
 Built_in Function là hàm có sẵn trong SQL SEVER, dùng để xử lí dữ liệu nhanh mà không cần tự viết.
 
@@ -233,12 +234,97 @@ Một số built_in function phổ biến như : string functions ( xử lí chu
 Chú thích : Ảnh này cho thấy tôi đã khai thác hàm GETDATE() thành công.
 
 - UPPER() _ Viết hoa chuỗi.
-   ``` sql
+- ``` sql
   SELECT UPPER([TenSinhVien]) AS [TenInHoa]
   FROM [SinhVien]
+  ```
+<img width="1911" height="1061" alt="image" src="https://github.com/user-attachments/assets/2fcc6f87-ff81-4931-ac6f-81af5d7eaa57" />
+ Chú Thích : Ảnh này cho thấy tôi đã khai thác thành công hàm UPPER.
+
+ - DATEDIFF() _Tính khoảng cách thời gian.
+ - ```  sql
+      SELECT [MaPhieu],
+      DATEDIFF(DAY,[NgayMuon],[NgayTra]) AS [SoNgayMuon]
+      FROM [PhieuMuon]
+`
+   <img width="1898" height="1062" alt="image" src="https://github.com/user-attachments/assets/7cd7388d-154a-4f5b-a6bb-f65334562efc" />
+Chú thích : Ảnh này cho thấy tôi đã khai thác thành công hàm DATEDIFF.
+
+2.2.Hàm do người dùng tự viết trong SQL thường mang mục đích gì? Nó có những loại nào? Mỗi loại thường được dùng khi nào? Tại sao có nhiều system function rồi mà vẫn cần tự viết fn riêng?
+
+* MỤC ĐÍCH :
+  - Tái sử dụng logic nhiều lần.
+  - Code gọn hơn , xử lí nghiệp vụ riêng của bài toán.
+  - Dễ bảo trì , nâng cấp.
+  - Chuẩn hóa thao tác tính toán.
+* Có system function rồi vẫn cần tự viết fn riêng là vì hàm có sãn chỉ xử lí chung chung, bài toán thực tế cần logic riêng. ví dụ như tính tiền phạt trả
+  muộn, liệt kê sách còn hàng... những việc này phải tự viết function.
+  
+* Các loại tự viết trong SQL :
+  
+  - Scalar Function : trả về 1 giá trị thường dùng khi tính toán 1 kết quả.
+    
+  - Inline Table-Valued Function : trả về 1 bảng ( 1 SELECT) thường dùng khi lọc danh sách đơn giản.
+    
+  - MuLti-statement TVF : trả về 1 bảng (nhiều bước xử lí ) thường dùng khi logic phức tạp.
+  
+2.2.1. Viết 01 Scalar Function (Hàm trả về một giá trị): Đưa ra 1 logic cho cơ sở dữ liệu của em, mà cần dùng đến function này. (SV TỰ NGHĨ RA YÊU CẦU CỦA HÀM VÀ VIẾT HÀM GIẢI QUYẾT NÓ)
+```sql
+CREATE FUNCTION [Fn_TinhSoNgayMuon]
+(
+    @MaPhieu NVARCHAR(50)
+)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @SoNgay INT
+
+    SELECT @SoNgay = DATEDIFF(DAY,[NgayMuon],[NgayTra])
+    FROM [PhieuMuon]
+    WHERE [MaPhieu] = @MaPhieu
+
+    RETURN @SoNgay
+END
+GO
 ```
+<img width="1911" height="1060" alt="image" src="https://github.com/user-attachments/assets/34932d59-30f2-4c8f-81e2-ef6519e6ca28" />
+Chú thích: Ảnh này đã cho thấy em đã tạo Scalar Function thành công.
 
+Sau khi đã có hàm, em đã viết câu lệnh sql khai thác hàm đó.
+```sql
+SELECT
+    [MaPhieu],
+    dbo.[Fn_TinhSoNgayMuon]([MaPhieu]) AS [SoNgayMuon]
+FROM [PhieuMuon]
+```
+<img width="1906" height="1077" alt="image" src="https://github.com/user-attachments/assets/4b924de0-fb76-4e74-97bb-9b9fffb48ad9" />
+Chú thích : Ảnh này đã cho thấy em viết câu lệnh sql khai thác hàm thành công.
 
+2.2.2.Viết 01 Inline Table-Valued Function: Trả về danh sách các bản ghi theo một điều kiện lọc cụ thể (SV TỰ NGHĨ RA YÊU CẦU CỦA HÀM VÀ VIẾT HÀM GIẢI QUYẾT NÓ)
+```sql
+CREATE FUNCTION [Fn_DanhSachSachConNhieu]
+(
+    @SoLuongToiThieu INT
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT
+        [MaSach],
+        [TenSach],
+        [SoLuong],
+        [GiaTien]
+    FROM [Sach]
+    WHERE [SoLuong] >= @SoLuongToiThieu
+)
+GO
+```
+<img width="1914" height="1078" alt="image" src="https://github.com/user-attachments/assets/b43e7a66-8375-47be-adbb-6488d292f258" />
+Chú thích : Ảnh này cho thấy e đã tạo hàm thành công.
+
+Sau khi đã có hàm, em sẽ viết câu lệnh sql khai thác hàm.
+```sql
 
 
 
