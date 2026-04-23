@@ -325,8 +325,53 @@ Chú thích : Ảnh này cho thấy e đã tạo hàm thành công.
 
 Sau khi đã có hàm, em sẽ viết câu lệnh sql khai thác hàm.
 ```sql
+SELECT *
+FROM dbo.[Fn_DanhSachSachConNhieu](10)
+GO
+```
+<img width="1908" height="1077" alt="image" src="https://github.com/user-attachments/assets/32c78613-2c48-4d35-850c-7f2ce16d442c" />
+Chú thích : Ảnh này cho thấy tôi đã khai thác hàm thành công.
 
+2.2.3.Viết 01 Multi-statement Table-Valued Function: Thực hiện xử lý logic phức tạp bên trong (có sử dụng biến bảng) trước khi trả về kết quả. (SV TỰ NGHĨ RA YÊU CẦU CỦA HÀM VÀ VIẾT HÀM GIẢI QUYẾT NÓ)
+```sql
+CREATE FUNCTION [Fn_ThongKeMuonTheoSinhVien]()
+RETURNS @KetQua TABLE
+(
+    [MaSinhVien] NVARCHAR(50),
+    [TenSinhVien] NVARCHAR(100),
+    [TongSoLuongMuon] INT
+)
+AS
+BEGIN
+    INSERT INTO @KetQua
+    SELECT
+        sv.[MaSinhVien],
+        sv.[TenSinhVien],
+        SUM(pm.[SoLuongMuon])
+    FROM [SinhVien] sv
+    JOIN [PhieuMuon] pm
+        ON sv.[MaSinhVien] = pm.[MaSinhVien]
+    GROUP BY
+        sv.[MaSinhVien],
+        sv.[TenSinhVien]
 
+    RETURN
+END
+GO
+```
+<img width="1914" height="1071" alt="image" src="https://github.com/user-attachments/assets/ae08c8a7-ae26-402d-8b37-40dfc5df1fe1" />
+Chú thích: Ảnh này cho thấy em đã tạo hàm thành công.
+
+Sau khi đã có hàm, em sẽ khai thác hàm.
+``sql
+SELECT *
+FROM dbo.[Fn_ThongKeMuonTheoSinhVien]()
+GO
+`
+<img width="1912" height="1078" alt="image" src="https://github.com/user-attachments/assets/12121c0a-e6ea-49a9-9aea-6119ef049170" />
+Chú thích: Ảnh này cho thấy em đã khai thác hàm thành công.
+
+Phần 3: Xây dựng Store Procedure.
 
 
     
