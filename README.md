@@ -671,4 +671,5 @@ Chú thích : Ảnh này cho thấy đã tạo trigger 2 thành công.
 - test sau khi tạo 2 trigger.
 <img width="1905" height="1076" alt="image" src="https://github.com/user-attachments/assets/65ab42c9-50fe-4013-a3db-50871f63f22c" />
 Chú thích :Ảnh này cho thấy không xảy ra lỗi.
+
 ##### Nhận xét :Khi thử nghiệm trên máy hiện tại, hệ thống không hiển thị lỗi recursion. Nguyên nhân có thể do cấu hình SQL Server hoặc điều kiện cập nhật không tạo vòng lặp thực sự. Tuy nhiên về mặt lý thuyết, trigger hai chiều có nguy cơ gây lặp vô hạn nên xử lí một chiều
