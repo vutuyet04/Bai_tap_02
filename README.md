@@ -561,3 +561,114 @@ GO
 ```
 <img width="1908" height="1071" alt="image" src="https://github.com/user-attachments/assets/b2494b24-4582-456e-9ba5-0e7fc88365b0" />
 Chú thích : Ảnh này cho thấy em đã giải quyết được yêu cầu tự mình đề ra.
+
+#PHẦN 4: Trigger và Xử lý logic nghiệp vụ.
+
+### 4.1. Viết 01 Trigger để tự động làm gì đó tại 1 bảng B khi mà dữ liệu thay đổi dữ liệu ở bảng A. Logic giải quyết do sv tự nghĩ ra, sao cho thực tế và thuyết phục.
+* Yêu cầu :
+  - Khi sinh viên tạo yêu cầu trong bảng [PhieuMuon] thì
+    
+    - Tự động giảm số lượng sách trong bảng [Sach]
+      
+    - Nếu sách không đủ số lượng -> bảo lỗi và hủy thao tác insert
+    
+```sql
+CREATE TRIGGER [Trg_KiemTraVaGiamSoLuongSach]
+ON [PhieuMuon]
+INSTEAD OF INSERT
+AS
+BEGIN
+   
+    IF EXISTS
+    (
+        SELECT 1
+        FROM inserted i
+        JOIN [Sach] s
+            ON i.[MaSach] = s.[MaSach]
+        WHERE i.[SoLuongMuon] > s.[SoLuong]
+    )
+    BEGIN
+        RAISERROR (N'Sách không đủ số lượng để cho mượn!',16,1)
+        RETURN
+    END
+
+    -- Nếu hợp lệ thì thêm phiếu mượn
+    INSERT INTO [PhieuMuon]
+    (
+        [MaPhieu],[MaSinhVien],[MaSach],
+        [SoLuongMuon],[NgayMuon],[NgayTra],[TienCoc]
+    )
+    SELECT
+        [MaPhieu],[MaSinhVien],[MaSach],
+        [SoLuongMuon],[NgayMuon],[NgayTra],[TienCoc]
+    FROM inserted
+
+    -- Giảm số lượng sách
+    UPDATE s
+    SET s.[SoLuong] = s.[SoLuong] - i.[SoLuongMuon]
+    FROM [Sach] s
+    JOIN inserted i
+        ON s.[MaSach] = i.[MaSach]
+END
+GO
+```
+<img width="1919" height="1078" alt="image" src="https://github.com/user-attachments/assets/ec1a672d-f0a4-489e-869b-5cbb19c6c299" />
+Chú thích : Ảnh này cho thấy em đã tạo Trigger thành công
+
+Sau đó em test theo yêu cầu:
+```sql
+INSERT INTO [PhieuMuon]
+VALUES
+(N'833',N'1956210100',N'PLDC',2,'2024-01-01','2024-01-05',50000)
+GO
+SELECT * FROM [Sach]
+```
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/01c6f53d-1776-485e-9295-394619b6713a" />
+
+Chú thích :Ảnh này cho thấy số lượng sách của PLDC đã giảm từ 15 xuống còn 13 thành công.
+
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/83baaafa-cac0-4783-8af2-976b08eda48f" />
+Chú thích :Ảnh này cho thấy test trigger lỗi do không đủ số lượng thành công.
+
+#### 4.2. Thử viết Trigger cho Bảng A : Khi insert thì cập nhật dữ liệu vào bảng B; sau đó viết trigger cho bảng B để khi B được cập nhật thì cập nhật sang bảng A : Quan sát các thông báo (nếu có) của hệ thống, giải thích các thông báo đó (nếu có). Đưa ra nhật xét cuối cùng về tình trạng này.
+
+Mô phỏng : A = [PhieuMuon] , B = [Sach].
+- Trigger 1 : Khi insert vào PhieuMuon cập nhật Sach.
+```sql
+CREATE TRIGGER [Trg_A_To_B]
+ON [PhieuMuon]
+AFTER INSERT
+AS
+BEGIN
+    UPDATE s
+    SET s.[GiaTien] = s.[GiaTien] + 1000
+    FROM [Sach] s
+    JOIN inserted i
+        ON s.[MaSach] = i.[MaSach]
+END
+GO
+```
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/a81652cd-455e-4352-a979-b905cb38b91c" />
+Chú thích :Ảnh cho thấy đã tạo trigger1 thành công.
+
+- Trigger 2 : Khi Sach update thì cập nhật lại PhieuMuon.
+```sql
+CREATE TRIGGER [Trg_B_To_A]
+ON [Sach]
+AFTER UPDATE
+AS
+BEGIN
+    UPDATE pm
+    SET pm.[TienCoc] = pm.[TienCoc] + 1000
+    FROM [PhieuMuon] pm
+    JOIN inserted i
+        ON pm.[MaSach] = i.[MaSach]
+END
+GO
+```
+<img width="1914" height="1079" alt="image" src="https://github.com/user-attachments/assets/77d7b2a5-b435-4cbe-9caa-2f6324109be4" />
+Chú thích : Ảnh này cho thấy đã tạo trigger 2 thành công.
+- test sau khi tạo 2 trigger.
+<img width="1905" height="1076" alt="image" src="https://github.com/user-attachments/assets/65ab42c9-50fe-4013-a3db-50871f63f22c" />
+Chú thích :Ảnh này cho thấy không xảy ra lỗi.
+##### Nhận xét :Khi thử nghiệm trên máy hiện tại, hệ thống không hiển thị lỗi recursion. Nguyên nhân có thể do cấu hình SQL Server hoặc điều kiện cập nhật không tạo vòng lặp thực sự. Tuy nhiên về mặt lý thuyết, trigger hai chiều có nguy cơ gây lặp vô hạn nên xử lí một chiều
