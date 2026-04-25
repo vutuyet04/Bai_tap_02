@@ -673,3 +673,112 @@ Chú thích : Ảnh này cho thấy đã tạo trigger 2 thành công.
 Chú thích :Ảnh này cho thấy không xảy ra lỗi.
 
 ##### Nhận xét :Khi thử nghiệm trên máy hiện tại, hệ thống không hiển thị lỗi recursion. Nguyên nhân có thể do cấu hình SQL Server hoặc điều kiện cập nhật không tạo vòng lặp thực sự. Tuy nhiên về mặt lý thuyết, trigger hai chiều có nguy cơ gây lặp vô hạn nên xử lí một chiều
+
+# PHẦN 5: CURSOR VÀ DUYỆT DỮ LIỆU.
+#### 5.1. Viết một đoạn script sử dụng CURSOR để duyệt qua danh sách của 1 câu lệnh SQL dạng SELECT, duyệt qua từng bản ghi, xử lý riêng từng bản ghi (THEO LOGIC SV TỰ ĐẶT RA: SAO CHO HỢP LÝ VÀ THUYẾT PHỤC).
+* Bài toán : Duyệt từng phiếu mượn :
+  - Nếu mượn trên 2 cuốn -> báo " Mượn nhiều sách"
+  - Nếu mượn quá 7 ngày -> báo " Trả trễ"
+```sql
+DECLARE @MaPhieu NVARCHAR(50)
+DECLARE @SoLuong INT
+DECLARE @NgayMuon DATE
+DECLARE @NgayTra DATE
+DECLARE @SoNgay INT
+
+DECLARE Cur_Phieu CURSOR FOR
+SELECT [MaPhieu],[SoLuongMuon],[NgayMuon],[NgayTra]
+FROM [PhieuMuon]
+
+OPEN Cur_Phieu
+
+FETCH NEXT FROM Cur_Phieu
+INTO @MaPhieu,@SoLuong,@NgayMuon,@NgayTra
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SoNgay = DATEDIFF(DAY,@NgayMuon,@NgayTra)
+
+    IF @SoLuong > 2
+        PRINT N'Phiếu ' + @MaPhieu + N' mượn nhiều sách'
+
+    IF @SoNgay > 7
+        PRINT N'Phiếu ' + @MaPhieu + N' trả trễ'
+
+    FETCH NEXT FROM Cur_Phieu
+    INTO @MaPhieu,@SoLuong,@NgayMuon,@NgayTra
+END
+
+CLOSE Cur_Phieu
+DEALLOCATE Cur_Phieu
+GO
+```
+<img width="1913" height="1079" alt="image" src="https://github.com/user-attachments/assets/ecad550c-60e1-42a1-b959-c789f6a7ce78" />
+
+Chú thích : Ảnh này cho thấy e đã giải quyết yêu cầu thành công.
+
+####  5.2. Tìm cách không sử dụng CURSOR để giải quyết bài toán mà em đã dùng CURSOR mới giải quyết được ở trên. thử so sánh tốc độ giữa có dùng cursor và không dùng cursor (nếu cùng kết quả) thì thời gian xử lý cái nào nhanh hơn, cần ảnh chụp màn hình minh chứng.
+```sql
+SELECT
+    [MaPhieu],
+    [SoLuongMuon],
+    DATEDIFF(DAY,[NgayMuon],[NgayTra]) AS [SoNgay]
+FROM [PhieuMuon]
+WHERE [SoLuongMuon] > 2
+   OR DATEDIFF(DAY,[NgayMuon],[NgayTra]) > 7
+GO
+```
+<img width="1906" height="1071" alt="image" src="https://github.com/user-attachments/assets/b715ac28-2668-48af-a90d-ed719716f9d7" />
+Chú thích : Ảnh này cho thấy em không dùng cursor mà dùng SQL thông thường.
+Sau đó em so sánh tốc độ:
+<img width="1900" height="1071" alt="image" src="https://github.com/user-attachments/assets/bac31b01-a78f-458a-8628-6e4144398ab0" />
+<img width="1912" height="1072" alt="image" src="https://github.com/user-attachments/assets/54cd03e2-55fd-4978-9f54-9fffdfa0fb14" />
+Chú thích : Sau khi xem thông báo so sánh qua 2 ảnh trên thì cho thấy CURSOR tốc độ chậm hơn SQl thông thường (SELECT ).
+#### 5.3. Nếu vẫn tìm được cách dùng SQL để giải quyết vấn đề mà ko cần CURSOR: thử nghĩ bài toán khác, mà chỉ CURSOR mới giải quyết được, còn SQL rất khó giải quyết đc (theo logic suy nghĩ của em)
+* Bài toán :Duyệt từng sinh viên đang mượn sách quá hạn và tạo thông báo cá nhân hóa cho từng người:
+  - Tên sinh viên khác nhau
+  -  Mã phiếu khác nhau
+  - Số ngày trễ khác nhau
+  - Mức phạt khác nhau
+  - Nội dung thông báo khác nhau
+
+   ```sql
+
+  DECLARE @TenSinhVien NVARCHAR(100)
+  DECLARE @MaPhieu NVARCHAR(50)
+  DECLARE @NgayTra DATE
+  DECLARE @SoNgayTre INT
+  DECLARE @TienPhat MONEY
+  
+  DECLARE Cur_QuaHan CURSOR FOR
+  SELECT sv.[TenSinhVien], pm.[MaPhieu], pm.[NgayTra]
+  FROM [PhieuMuon] pm
+  JOIN [SinhVien] sv
+  ON pm.[MaSinhVien] = sv.[MaSinhVien]
+  
+  OPEN Cur_QuaHan
+  
+  FETCH NEXT FROM Cur_QuaHan
+  INTO @TenSinhVien,@MaPhieu,@NgayTra
+  
+  WHILE @@FETCH_STATUS = 0
+  BEGIN
+      SET @SoNgayTre = DATEDIFF(DAY,@NgayTra,GETDATE())
+      SET @TienPhat = @SoNgayTre * 5000
+  
+      SELECT
+          @TenSinhVien AS TenSinhVien,
+          @MaPhieu AS MaPhieu,
+          @SoNgayTre AS SoNgayTre,
+          @TienPhat AS TienPhat
+  
+      FETCH NEXT FROM Cur_QuaHan
+      INTO @TenSinhVien,@MaPhieu,@NgayTra
+  END
+  
+  CLOSE Cur_QuaHan
+  DEALLOCATE Cur_QuaHan
+  GO
+```
+<img width="1912" height="1069" alt="image" src="https://github.com/user-attachments/assets/5ea1b3d9-83c7-45e0-bf50-bf5c19a1bfa4" />
+Chú thích : Ảnh này chỉ hợp với CURSOR khi gọi riêng biệtdữ liệu từng người mà SQL đơn thuần không làm được.
